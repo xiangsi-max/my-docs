@@ -2,12 +2,14 @@
 
 ## 1. 基本信息
 
+- **姓名拼音**：luoweicheng
 - **GitHub 登录名**：xiangsi-max
 - **个人仓库地址**：https://github.com/xiangsi-max/my-docs
 - **最终网站地址**：https://xiangsi-max.github.io/my-docs/
+- **教师仓库 Issue**：[#90 02-github-pages luoweicheng](https://github.com/hunnuOpenSourceSoftware2026/assignments/issues/90)
 - **实践主题**：用 MkDocs 编写静态文档，交给 GitHub Actions 自动构建并发布到 GitHub Pages
 
-我这次没有手工往任何服务器上传过一个 HTML 文件。整个网站的三次"发布"（首次上线、第二次内容更新、以及报告这一次）全部由 `git push` 触发。
+我这次没有手工往任何服务器上传过一个 HTML 文件。网站每一次「发布」（首次上线、第二次内容更新、第三次补充页面链接）全部由 `git push` 触发，三次运行都在 Actions 里留下了记录。而后来只推报告的提交则一次运行都没产生——这个对比恰好说明了触发条件是精准的。
 
 ---
 
@@ -81,7 +83,7 @@ python -m mkdocs serve --dev-addr 127.0.0.1:8011
 
 **做了什么**：把源码提交推送到 `main`，工作流自动触发。
 
-- 提交：`3ee140e` 搭建MkDocs文档并配置Pages自动部署
+- 提交：`3ee140e` [搭建MkDocs文档并配置Pages自动部署](https://github.com/xiangsi-max/my-docs/commit/3ee140e8e1b2748d3b535f71e45ffde7d358428b)
 - 运行：#1 https://github.com/xiangsi-max/my-docs/actions/runs/42637567837
 
 ![首次运行成功](images/05-actions-success.png)
@@ -120,7 +122,7 @@ build 只花了不到 20 秒，大部分时间花在 deploy——因为这一步
 自动部署验证：这是我第二次推送后更新的内容。
 ```
 
-- 提交：`0217e83` 验证文档修改后自动更新网站
+- 提交：`0217e83` [验证文档修改后自动更新网站](https://github.com/xiangsi-max/my-docs/commit/0217e83266141048c3ef6195d3dc220c43ab6767)
 - 运行：#2 https://github.com/xiangsi-max/my-docs/actions/runs/42639052805
 
 ![第二次运行成功](images/07-second-push.png)
@@ -152,7 +154,7 @@ push 后约 2 秒就开始跑了（14:53:13 创建，14:53:15 起 build），说
 - [使用指南](guide.md)——本地预览、严格构建与推送流程。
 ```
 
-- 提交：`bb0c4f8` 补充三页的页面间链接
+- 提交：`bb0c4f8` [补充三页的页面间链接](https://github.com/xiangsi-max/my-docs/commit/bb0c4f830d922e481928d8978a60d2ae483442ac)
 - 运行：#3 https://github.com/xiangsi-max/my-docs/actions/runs/42651682474
 - 结果：build 与 deploy 均 success
 
@@ -166,7 +168,7 @@ push 后约 2 秒就开始跑了（14:53:13 创建，14:53:15 起 build），说
 
 ### 2.9 反证实验：只改报告会怎样
 
-为了给第 4 问一个**实测答案**而不是纸面推理，我做了这个对照实验：提交 `0870b6b` **只**包含 `report/README.md`（就是你正在读的这一段），不碰任何 `docs/` 下的文件，推上去之后观察 Actions。
+为了给第 4 问一个**实测答案**而不是纸面推理，我做了这个对照实验：提交 `0870b6b` [报告补充第三次推送与反证实验记录](https://github.com/xiangsi-max/my-docs/commit/0870b6b9bf68c373d5096288bdfc137b99eb76b4) **只**包含 `report/README.md`（就是你正在读的这一段），不碰任何 `docs/` 下的文件，推上去之后观察 Actions。
 
 推送前运行数是 3 次，推送后等了 90 秒再看：
 
