@@ -1,0 +1,51 @@
+site_name: 我的技术文档
+site_url: https://xiangsi-max.github.io/my-docs/
+repo_url: https://github.com/xiangsi-max/my-docs
+repo_name: xiangsi-max/my-docs
+site_description: 使用 MkDocs Material 构建并通过 GitHub Actions 自动部署的静态文档站
+site_author: xiangsi-max
+copyright: Copyright &copy; 2026 xiangsi-max
+
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.tabs
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: 切换到深色模式
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: 切换到浅色模式
+
+nav:
+  - 首页: index.md
+  - 关于: about.md
+  - 使用指南: guide.md
+  - API参考: api.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search
