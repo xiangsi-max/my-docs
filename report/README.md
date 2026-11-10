@@ -31,6 +31,8 @@
 
 **做了什么**：按作业要求的目录结构建立文件，`mkdocs.yml` 里写死站点名、`site_url`、导航和 Material 主题。
 
+**为什么这样做**：`mkdocs.yml` 是整站的唯一配置入口——`site_url` 决定了所有页面里链接的绝对地址前缀，`nav` 决定了顶栏四个入口的顺序和名字。这两项写错，后面所有页面都会受影响，所以先把它配对再写内容。
+
 ![项目结构与 mkdocs.yml](images/02-project-structure.png)
 
 三层目录的分工，我是这样理解的：
@@ -45,9 +47,13 @@
 
 `site/` 和 `.venv/` 都进了 `.gitignore`。理由很直接：它们是本地运行产生的中间物，体积大、每次构建都变，提交进去只会让 diff 变脏，而且和工作流里"重新构建一份"完全重复。
 
+**结果**：本地 `mkdocs build --strict` 通过，`site/` 目录被正确生成且未进入 git 暂存区；`git status` 里看不到 `site/` 和 `.venv/` 的任何文件。
+
 ### 2.3 本地构建与预览
 
 **做了什么**：建虚拟环境、装依赖、严格构建、本地预览。
+
+**为什么这样做**：作业把 Python 依赖装进独立虚拟环境，是为了不影响系统 Python；而先跑一遍 `--strict` 构建，是因为工作流里用的命令就是它——**本地能过，CI 才可能过**，把问题留在本地比等到 Actions 红了再改快得多。
 
 ```bash
 python -m venv .venv
@@ -69,6 +75,8 @@ python -m mkdocs serve --dev-addr 127.0.0.1:8011
 
 > 这里有个容易踩的点：因为 `site_url` 带了子路径 `/my-docs/`，`mkdocs serve` 实际的服务地址是 `http://127.0.0.1:8011/my-docs/`，**末尾的 `my-docs/` 不能省**。我实测过：访问根路径 `/` 返回的是 `302` 跳转，只有 `/my-docs/` 才返回 `200`；用浏览器看不出差别，但如果直接 `curl` 根路径去验证页面内容，拿到的是跳转而不是 HTML，很容易误判成"服务没起来"。
 
+**结果**：`python -m mkdocs build --strict` 退出码为 **0**（0 警告 0 错误），`site/` 生成成功；本地预览四个页面全部返回 200，导航、表格、代码块、页面间链接都正常。
+
 ### 2.4 Pages 发布来源设置
 
 **做了什么**：`Settings` → `Pages` → `Build and deployment` → `Source` 选 **GitHub Actions**。
@@ -79,9 +87,13 @@ python -m mkdocs serve --dev-addr 127.0.0.1:8011
 
 截图里能看到 "Your site is live at https://xiangsi-max.github.io/my-docs/"，以及 "last deployed ... by the Deploy MkDocs to GitHub Pages workflow"，说明发布来源确实绑定到了我们的工作流上。
 
+**结果**：`Source` 的值为 `GitHub Actions`，`gh api repos/xiangsi-max/my-docs/pages` 返回的 `build_type` 是 `workflow`（分支发布方案对应的是 `legacy`），确认没有混用分支发布设置。
+
 ### 2.5 Actions 首次构建与部署
 
 **做了什么**：把源码提交推送到 `main`，工作流自动触发。
+
+**为什么这样做**：这是配置 Pages 来源之后的第一次验证。第一次运行要确认的不是"网站好不好看"，而是**整条链路是否打通**：`on.push` 能不能被监听到、`build` 能不能装好依赖并构建成功、`deploy` 能不能拿到权限并发布出去。任何一环断了，后面的自动更新都无从谈起。
 
 - 提交：`3ee140e` [搭建MkDocs文档并配置Pages自动部署](https://github.com/xiangsi-max/my-docs/commit/3ee140e8e1b2748d3b535f71e45ffde7d358428b)
 - 运行：#1 https://github.com/xiangsi-max/my-docs/actions/runs/42637567837
@@ -99,7 +111,11 @@ build 只花了不到 20 秒，大部分时间花在 deploy——因为这一步
 
 ### 2.6 网站访问与四页导航检查
 
+**做了什么**：用浏览器打开部署后的公开网站，逐个点开四个页面。
+
 ![公开网站首页](images/06-site-home.png)
+
+**为什么这样做**：build 和 deploy 两个任务都是绿的，只能说明"产物传上去了"，**不代表用户能真正打开页面**。项目站点的地址带仓库子路径 `/my-docs/`，最容易出的问题恰恰是资源路径和内部链接前缀不对——这类问题在 Actions 日志里看不出来，只有真的打开页面才会暴露。
 
 四个页面逐一打开确认：
 
@@ -112,9 +128,13 @@ build 只花了不到 20 秒，大部分时间花在 deploy——因为这一步
 
 截图保留了完整地址栏，可以看到域名是 `xiangsi-max.github.io/my-docs/`，**带上了仓库路径**——项目站点必须带这段前缀，漏掉就 404。
 
+**结果**：四页全部返回 `200`，顶栏四个入口互相跳转正常，页面标题分别是「我的技术文档」「关于 - 我的技术文档」「使用指南 - 我的技术文档」「API参考 - 我的技术文档」，表格、代码块和内部链接都正常渲染。
+
 ### 2.7 第二次推送与自动更新验证
 
 **做了什么**：在 `docs/index.md` 末尾加一句话，提交推送，**全程没有点任何手动部署按钮**。
+
+**为什么这样做**：作业第 6.2 节要求"再修改一次，证明能够自动更新"。首次部署成功只能说明工作流配通了，**不能证明它会在每次推送时自动再跑一遍**——万一是靠点按钮触发的，自动化的意义就没了。所以必须用一个只改内容的提交，看它能不能自己触发。
 
 ```markdown
 ## 自动部署验证
@@ -138,11 +158,15 @@ push 后约 2 秒就开始跑了（14:53:13 创建，14:53:15 起 build），说
 
 ![网站出现新增文字](images/07b-site-updated.png)
 
+**结果**：`build` 与 `deploy` 均 success，网页上出现了新增的那行文字，全程没有手动操作。
+
 到这里"推送 → 构建 → 部署 → 网页更新"这条链路被完整验证了一遍。整个过程我只做了一件事：改了一个 Markdown 文件然后 push。
 
 ### 2.8 第三次推送：补充页面间链接
 
-自查时我发现一个问题：作业要求四页都含页面间链接，但我最初只在首页写了指向另外三页的链接，`about` / `guide` / `api` 三页是"被链接"但没有"链回去"。虽然勉强能用顶部导航代替，但严格按字面要求是不达标的。
+**做了什么**：给 `about` / `guide` / `api` 三页各加一个「相关页面」小节，四页两两互链。
+
+**为什么这样做**：自查时我发现一个问题——作业要求四页都含页面间链接，但我最初只在首页写了指向另外三页的链接，`about` / `guide` / `api` 三页是"被链接"但没有"链回去"。虽然勉强能用顶部导航代替，但严格按字面要求是不达标的。补这一次也是为了顺带确认：不是只有"第二次"能触发部署，后续每次 push 都会自动跑。
 
 于是我给三页各加了一个「相关页面」小节，互相之间全部连上：
 
@@ -168,7 +192,9 @@ push 后约 2 秒就开始跑了（14:53:13 创建，14:53:15 起 build），说
 
 ### 2.9 反证实验：只改报告会怎样
 
-为了给第 4 问一个**实测答案**而不是纸面推理，我做了这个对照实验：提交 `0870b6b` [报告补充第三次推送与反证实验记录](https://github.com/xiangsi-max/my-docs/commit/0870b6b9bf68c373d5096288bdfc137b99eb76b4) **只**包含 `report/README.md`（就是你正在读的这一段），不碰任何 `docs/` 下的文件，推上去之后观察 Actions。
+**做了什么**：提交 `0870b6b` [报告补充第三次推送与反证实验记录](https://github.com/xiangsi-max/my-docs/commit/0870b6b9bf68c373d5096288bdfc137b99eb76b4) **只**包含 `report/README.md`（就是你正在读的这一段），不碰任何 `docs/` 下的文件，推上去之后观察 Actions。
+
+**为什么这样做**：作业第 4 问问"只修改 report/README.md 会触发部署吗"，这个问题可以直接从 `paths` 配置推断出来，但推断和实测是两回事——我想拿真实数据回答，而不是照着配置文件复述一遍。
 
 推送前运行数是 3 次，推送后等了 90 秒再看：
 
@@ -177,18 +203,20 @@ push 后约 2 秒就开始跑了（14:53:13 创建，14:53:15 起 build），说
 | 推送前 | 3 |
 | 推送 `0870b6b` 后 90 秒 | **3** |
 
-**没有新增运行。** GitHub 在收到 push 后比对了改动文件列表，`report/README.md` 没有命中 `paths` 里的任何一条，于是直接没有创建工作流运行——连"跳过"的记录都没留下，因为它压根没启动。
+**结果**：**没有新增运行。** GitHub 在收到 push 后比对了改动文件列表，`report/README.md` 没有命中 `paths` 里的任何一条，于是直接没有创建工作流运行——连"跳过"的记录都没留下，因为它压根没启动。
 
 这个反证让第 4 问从"读配置推断"变成了"实测确认"：`paths` 过滤是生效的，不是碰巧没跑。
 
 ### 2.10 第四次推送：按自查清单回头改内容
 
-写完第 5 章的自查清单后，我没有直接提交，而是把 12 条逐条拿到仓库里核对了一遍，结果有 3 条对不上，只好回头去改：
+**做了什么**：把作业第 467–475 行的"提交前检查"清单逐条拿到仓库里实测核对，发现 3 处对不上，回头改掉再推。
+
+**为什么这样做**：清单是我自己勾的，勾之前没有一条一条验过。作业第 465 行写着"教师可结合提交记录、Actions 日志和现场解释核验本人完成情况"——**自查清单如果和仓库实际状态对不上，比不写更糟**，因为它会让人以为已经检查过了。
 
 | 自查项 | 核对结果 | 怎么处理 |
 | --- | --- | --- |
-| 所有示例地址已替换为本人信息 | `docs/api.md` 的 curl 示例还是 `https://example.com/...` | 换成 `https://xiangsi-max.github.io/my-docs/api/docs` |
-| 四页都有本人撰写的介绍与体会 | `guide.md`、`api.md` 全文一个"我"字都没有，是纯教程口吻 | 两页各补一节第一人称内容（见下） |
+| 所有示例账号、仓库地址均已替换 | `docs/api.md` 的 curl 示例还是 `https://example.com/...` | 换成 `https://xiangsi-max.github.io/my-docs/api/docs` |
+| 四页均有本人撰写的介绍与体会 | `guide.md`、`api.md` 全文一个"我"字都没有，是纯教程口吻 | 两页各补一节第一人称内容（见下） |
 | 四页两两互链 | 已在上一次推送补上 | — |
 
 第一处是硬伤：`example.com` 是 RFC 2606 保留的示例域名，留着等于告诉老师"这段是抄来的模板"。
@@ -211,7 +239,8 @@ api.md    我=5
 
 - 提交：`777a8f2` 补充两页第一人称内容并替换示例域名
 - 运行：#4 https://github.com/xiangsi-max/my-docs/actions/runs/42820717322 → build 与 deploy 均 success
-- 线上复查：`/guide/` 与 `/api/` 均已出现新增内容，`/api/` 里 `example.com` 出现次数为 **0**
+
+**结果**：线上 `/guide/` 与 `/api/` 均已出现新增内容，`/api/` 里 `example.com` 出现次数为 **0**；四页第一人称出现次数分别为 14 / 10 / 18 / 14（统计的是渲染后 HTML 里的"我"字）。
 
 另外我顺手补了一个细节：仓库首页的 About 面板原本没填站点地址（`homepage` 字段是空的），我用 `gh api -X PATCH` 补上了 `https://xiangsi-max.github.io/my-docs/`，这样从仓库首页就能直接点进网站。
 
@@ -240,17 +269,36 @@ rm -rf mkdocs_al2hgu6m
 
 并在 `.gitignore` 里补上 `mkdocs_*/`。教训是：`.gitignore` 要按**模式**写，而不是只写死自己见过的那个目录名。
 
-### 问题 3：截 GitHub 需要登录的页面一直失败
+### 问题 3：`--strict` 到底会拦下什么？我做了故障注入实验
 
-**现象**：Actions 运行页和 Settings → Pages 页，用普通无头浏览器截出来是全白/全黑。
+**背景**：本次四次工作流运行全部成功，没有出现"线上构建失败"的情况。作业第 402 行要求"如没有遇到错误，说明你核对过哪些日志和配置"，所以我没有凭空写一个错误，而是**故意把项目改坏，看 `--strict` 会不会拦住**——毕竟它是本地和 CI 之间的唯一保险。
 
-**原因**：这两个页面需要登录态，匿名访问会被重定向；而浏览器的登录 cookie 绑定在本机真实 profile 上，复制一份 profile 到别处并不生效（cookie 是加密的，换了 profile 就解不开）。
+**做了什么**：把仓库复制一份到临时目录，注入两个最常见的错误——把 `nav` 里的 `api.md` 改成不存在的 `apii.md`，把 `about.md` 里指向 `guide.md` 的链接改成 `guidee.md`，然后跑 `mkdocs build --strict`。
 
-**解决**：改用本机已登录的 Chrome profile 来跑无头截图，就拿到了真实页面。
+**关键日志**（实际运行输出）：
 
-### 没有遇到但核对过的地方
+```text
+WARNING -  A reference to 'apii.md' is included in the 'nav' configuration,
+           which is not found in the documentation files.
+WARNING -  Doc file 'about.md' contains a link 'guidee.md', but the target
+           is not found among documentation files.
+Aborted with 2 warnings in strict mode!
+EXIT=1
+```
 
-`build --strict` 在本地一直是 0 警告通过的，所以没有出现"线上构建失败但本地正常"这种最麻烦的情况。我额外确认了三件事：`requirements.txt` 里的版本范围在 CI 的 Python 3.12 上能装（本地是 3.11，版本范围留了余量）；工作流里 `path: site` 和本地 `mkdocs build` 的默认输出目录一致；`upload-pages-artifact@v4` 的 `path` 是**目录**而不是单个文件。
+**原因**：`--strict` 的作用是把所有 WARNING 升级为错误。默认模式下这两种问题只会打印警告然后**继续构建成功**，产出一个 `nav` 里少了 API 页、`about` 页有个死链的网站；加了 `--strict` 之后，构建在 `site/` 生成前就中止，退出码为 1。
+
+**解决与结论**：这两种错误**本地和 CI 用的是同一条命令、同一套规则**，所以本地 `EXIT=1` 就等于 CI 一定红。这解释了为什么工作流里 `build` 步骤一旦失败，`deploy` 就完全不会启动——`needs: build` 让部署被直接跳过，线上仍然是上一次成功的版本，不会变成白站。我核对过的日志与配置见下表。
+
+**另外核对过的地方**：
+
+| 核对项 | 结论 |
+| --- | --- |
+| `requirements.txt` 的版本范围在 CI 的 Python 3.12 上能装 | 本地 3.11 装的是 `mkdocs 1.6.1` + `mkdocs-material 9.8.1`，范围 `>=1.6,<2` / `>=9.6,<10` 留了余量 |
+| 工作流 `path: site` 与本地默认输出目录一致 | 本地 `mkdocs build` 默认就输出到 `site/`，两者相同 |
+| `upload-pages-artifact@v4` 的 `path` 是目录 | 是目录不是单个文件，传 `site` 而不是 `site/index.html` |
+| 工作流 YAML 与作业给定配置是否一致 | 逐行 `diff` 比对，58 行完全一致，`${{ }}` 表达式未替换 |
+| 是否存在多余的 gh-pages 分支 | `git ls-remote --heads origin` 只有 `main`，没有 `gh-pages` |
 
 ---
 
@@ -328,19 +376,50 @@ rm -rf mkdocs_al2hgu6m
 
 这也顺带回答了为什么 Pages 的 Source 必须设成 "GitHub Actions" 而不是 "Deploy from a branch"——后者对应的正是已经被淘汰的那条分支发布链路。
 
+### 4.6 工作流里每段配置各起什么作用？
+
+作业要求"理解以下配置，并在个人报告中用自己的话解释"，逐条对照我自己的理解：
+
+| 配置 | 我理解的作用 |
+| --- | --- |
+| `on.push.branches: [main]` | 只有推到 `main` 才算数。开分支做实验不会部署，避免草稿上线。 |
+| `on.push.paths` | 文件过滤器。只有 `docs/**`、`mkdocs.yml`、`requirements.txt`、`deploy.yml` 变动才跑，改报告和 README 不跑。 |
+| `workflow_dispatch` | 手动开关。第一次配置时如果担心 push 没触发，可以在 Actions 页面点 Run workflow 手动跑一次。 |
+| `permissions.contents: read` | 顶层只给读代码的权限，这是最小权限的基线。 |
+| `concurrency.group: pages` | 同一时间只允许一个 Pages 部署在跑，避免两次部署互相覆盖。 |
+| `cancel-in-progress: false` | 排队而不是取消。连续推两次时，前一次会跑完再跑后一次，保证线上最终是最后一次提交的结果。 |
+| `build` 作业的五个步骤 | checkout 取源码 → setup-python 装 3.12 → configure-pages 读出 Pages 配置（比如 `base_url`）→ pip 装依赖 → `mkdocs build --strict` 生成 `site/`。 |
+| `upload-pages-artifact@v4` + `path: site` | 把 `site/` 整个目录打包成 artifact，供下一个作业取用。`path` 写的是目录，不是某个文件。 |
+| `needs: build` | 部署的前置条件。build 失败则 deploy 不启动，线上保持旧版本。 |
+| `deploy` 作业的 `pages: write` | 唯一需要写权限的地方——往 Pages 服务发布内容。 |
+| `id-token: write` | 允许 `deploy-pages` 申请 OIDC 令牌。这个令牌是一次性的，用完即失效，所以不需要在仓库里存 PAT。 |
+| `environment: github-pages` | 把这次部署和 GitHub 的 `github-pages` 环境绑定，部署地址会记录在仓库的 Environments 页面里。 |
+| `url: ${{ steps.deployment.outputs.page_url }}` | 从部署步骤的输出里取真实站点地址，直接显示在运行记录顶部，点一下就能打开。 |
+
+其中 `concurrency` 那条我一开始没看懂为什么要写。后来想明白了：如果两次 push 挨得很近，两个部署同时进行，先完成的那次可能反而覆盖掉后完成的，线上就会变成"旧内容"。设成 `cancel-in-progress: false` 表示排队执行，保证顺序和提交顺序一致。
+
 ---
 
 ## 5. 提交前自查
 
-- [x] 使用本人账号 `xiangsi-max` 的公开仓库，未借用他人运行记录
+按作业第九节的"提交前检查"逐条核对，每条都附上实测证据，不是凭印象打勾。
+
+| 检查项 | 实测证据 | 结论 |
+| --- | --- | --- |
+| 使用本人个人仓库，不涉及小组/组织/PR | `gh api repos/xiangsi-max/my-docs` → `owner=xiangsi-max`、`visibility=public`；无 fork、无 PR | ✅ |
+| 所有示例账号、仓库地址和个人介绍均已替换 | `grep -rn 'example.com' docs/` → **0 处**；`site_url`、`repo_url`、`site_author` 均为本人账号 | ✅ |
+| 文件路径及大小写正确，YAML 使用空格缩进 | `nav` 路径相对 `docs/` 且大小写与文件名一致；`mkdocs.yml`、`deploy.yml` 中 TAB 数量为 **0** | ✅ |
+| Pages 来源为 GitHub Actions，未混用分支发布设置 | `gh api repos/xiangsi-max/my-docs/pages` → `build_type=workflow`（分支方案是 `legacy`）；`git ls-remote --heads origin` 只有 `main`，无 `gh-pages` | ✅ |
+| 四页可访问，第二次推送已在网站生效 | 四页均返回 **200**；首页含"这是我第二次推送后更新的内容" | ✅ |
+| 报告截图完整且可见，解释为本人撰写 | `report/images/` 下 8 张 PNG，`raw.githubusercontent.com` 逐个访问全部 **200**；每节均按"做了什么/为什么这样做/结果"撰写 | ✅ |
+| 本人已在教师仓库提交一条 Issue，两个核心地址正确 | [#90](https://github.com/hunnuOpenSourceSoftware2026/assignments/issues/90) `OPEN`，标题 `02-github-pages luoweicheng`；报告地址直达 `report/README.md`，效果地址直达网站 | ✅ |
+
+补充的几项（作业未列，但我认为该确认）：
+
 - [x] 默认分支为 `main`，与工作流 `branches: [main]` 一致
-- [x] 所有示例账号、仓库地址均已替换为本人信息（`example.com` 已换成真实站点域名，见 2.10）
-- [x] 四个 Markdown 均为 UTF-8，YAML 全部使用空格缩进
-- [x] 四页均有标题与实质内容，包含表格、代码块、页面间链接和本人撰写的介绍与体会（`guide.md`/`api.md` 的第一人称内容见 2.10）
-- [x] Pages 发布来源为 **GitHub Actions**，未创建 `gh-pages` 分支
-- [x] 工作流保留原始 `${{ }}` 表达式，未替换成账号
-- [x] 首次运行与第二次 push 均成功，线上已出现新增文字
-- [x] 四页两两互链（第三次推送补上了 about/guide/api 的「相关页面」小节）
-- [x] 仅改报告的提交已实测确认不触发部署
-- [x] `site/`、`.venv/` 未提交，仓库中无构建产物
-- [x] 已在教师仓库提交一条 Issue
+- [x] 工作流与作业给定配置逐行 `diff` 一致（58 行），`${{ }}` 表达式未替换成账号
+- [x] 四页两两互链，共 12 条（每页 3 条）
+- [x] 仅改报告的提交已实测确认不触发部署（见 2.9）
+- [x] `site/`、`.venv/` 未提交，仓库 18 个文件中构建产物为 **0 个**
+- [x] 仓库 Actions 权限未被改成全局读写：`default_workflow_permissions=read`、`can_approve_pull_request_reviews=false`
+- [x] 公开报告与 Issue 中不含密码、令牌等敏感信息
