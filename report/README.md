@@ -9,7 +9,7 @@
 - **教师仓库 Issue**：[#90 02-github-pages luoweicheng](https://github.com/hunnuOpenSourceSoftware2026/assignments/issues/90)
 - **实践主题**：用 MkDocs 编写静态文档，交给 GitHub Actions 自动构建并发布到 GitHub Pages
 
-我这次没有手工往任何服务器上传过一个 HTML 文件。网站每一次「发布」（首次上线、第二次内容更新、第三次补充页面链接）全部由 `git push` 触发，三次运行都在 Actions 里留下了记录。而后来只推报告的提交则一次运行都没产生——这个对比恰好说明了触发条件是精准的。
+我这次没有手工往任何服务器上传过一个 HTML 文件。网站每一次「发布」（首次上线、第二次更新内容、第三次补充页面链接、第四次修订正文）全部由 `git push` 触发，四次运行都在 Actions 里留下了记录。而中间只推报告的那次提交则一次运行都没产生——这个对比恰好说明了触发条件是精准的。
 
 ---
 
@@ -181,8 +181,6 @@ push 后约 2 秒就开始跑了（14:53:13 创建，14:53:15 起 build），说
 
 这个反证让第 4 问从"读配置推断"变成了"实测确认"：`paths` 过滤是生效的，不是碰巧没跑。
 
----
-
 ### 2.10 第四次推送：按自查清单回头改内容
 
 写完第 5 章的自查清单后，我没有直接提交，而是把 12 条逐条拿到仓库里核对了一遍，结果有 3 条对不上，只好回头去改：
@@ -210,6 +208,10 @@ api.md    我=5
 ```
 
 `mkdocs build --strict` 仍为 EXIT=0。
+
+- 提交：`777a8f2` 补充两页第一人称内容并替换示例域名
+- 运行：#4 https://github.com/xiangsi-max/my-docs/actions/runs/42820717322 → build 与 deploy 均 success
+- 线上复查：`/guide/` 与 `/api/` 均已出现新增内容，`/api/` 里 `example.com` 出现次数为 **0**
 
 另外我顺手补了一个细节：仓库首页的 About 面板原本没填站点地址（`homepage` 字段是空的），我用 `gh api -X PATCH` 补上了 `https://xiangsi-max.github.io/my-docs/`，这样从仓库首页就能直接点进网站。
 
