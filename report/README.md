@@ -9,7 +9,7 @@
 - **教师仓库 Issue**：[#90 02-github-pages luoweicheng](https://github.com/hunnuOpenSourceSoftware2026/assignments/issues/90)
 - **实践主题**：用 MkDocs 编写静态文档，交给 GitHub Actions 自动构建并发布到 GitHub Pages
 
-我这次没有手工往任何服务器上传过一个 HTML 文件。网站每一次「发布」（首次上线、第二次更新内容、第三次补充页面链接、第四次修订正文）全部由 `git push` 触发，四次运行都在 Actions 里留下了记录。而中间只推报告的那次提交则一次运行都没产生——这个对比恰好说明了触发条件是精准的。
+我这次没有手工往任何服务器上传过一个 HTML 文件。网站每一次「发布」（首次上线、第二次更新内容、第三次补充页面链接、第四次修订正文）全部由 `git push` 触发，四次运行都在 Actions 里留下了记录。而这期间**只动 `report/` 和截图的提交则一次运行都没产生**。把提交列表和运行列表并排看就很清楚：`actions/runs` 的 `total_count` 是 4，正好对应那 4 个改动了 `docs/` 的提交；其余提交一个都没触发。这个对比恰好说明了触发条件是精准的。
 
 ---
 
